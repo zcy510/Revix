@@ -1,0 +1,29 @@
+{
+  "name": "revix",
+  "version": "1.0.0",
+  "description": "A JS library to visualize Android/iOS view trees in the browser.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zcy510/Revix.git"
+  },
+  "keywords": [
+    "view-tree",
+    "ui-visualization",
+    "android",
+    "ios"
+  ],
+  "author": "Taro",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/zcy510/Revix/issues"
+  },
+  "homepage": "https://github.com/zcy510/Revix#readme",
+  "devDependencies": {
+    "vite": "^6.3.5"
+  }
+}

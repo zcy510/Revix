@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Revix Demo</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      height: 100%;
+      background: #f0f0f0;
+    }
+    #app {
+      width: 100vw;
+      height: 100vh;
+    }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+
+  <!-- 模块代码（可以先直接粘贴到这测试） -->
+  <script type="module">
+    // 模拟导入你的库中的方法
+    import { renderViewTree } from './src/index.js';
+
+    // 示例视图树结构（Android/iOS 转换过来的）
+    const viewTree = {
+      type: 'View',
+      bounds: [50, 50, 400, 300],
+      children: [
+        {
+          type: 'TextView',
+          bounds: [80, 80, 350, 130],
+        },
+        {
+          type: 'Button',
+          bounds: [80, 180, 200, 240],
+        }
+      ]
+    };
+
+    // 渲染视图树
+    const container = document.getElementById('app');
+    renderViewTree(viewTree, container);
+  </script>
+</body>
+</html>
