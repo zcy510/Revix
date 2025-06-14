@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Revix Demo</title>
+  <style>
+    body { margin: 0; }
+    canvas { width: 100vw; height: 100vh; display: block; }
+  </style>
+</head>
+<body>
+  <canvas id="revix-canvas" width="800" height="600"></canvas>
+  <script type="module">
+    import { RevixRenderer } from './core/RevixCore.js';
+
+    const canvas = document.getElementById('revix-canvas');
+    const renderer = new RevixRenderer(canvas);
+
+    const viewTree = {
+      bounds: [-100, 100, 100, -100],
+      backgroundColor: '#ff9999',
+      children: [
+        {
+          bounds: [-80, 80, 0, 0],
+          backgroundColor: '#99ccff',
+        },
+        {
+          bounds: [10, 90, 90, 10],
+          backgroundColor: '#99ff99',
+          children: [
+            {
+              bounds: [30, 70, 70, 30],
+              backgroundColor: '#ffff99',
+            }
+          ]
+        }
+      ]
+    };
+
+    // ✅ 启动渲染循环
+    function renderLoop() {
+      renderer.clear();
+      renderer.renderTree(viewTree);
+      requestAnimationFrame(renderLoop);
+    }
+    renderLoop();
+  </script>
+</body>
+</html>
