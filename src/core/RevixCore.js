@@ -2,14 +2,18 @@
 import { mat4 } from 'https://cdn.jsdelivr.net/npm/gl-matrix@3.4.3/esm/index.js';
 
 export class RevixRenderer {
-    constructor(canvas) {
+    constructor(canvas, viewTree) {
         this.canvas = canvas;
         this.gl = canvas.getContext('webgl');
+        this.viewTree = viewTree;
         if (!this.gl) throw new Error('WebGL not supported');
+        this.viewMap = new Map(); // id -> viewNode
+        this.selectedId = null;
 
         this.initGL();
         this.initShaders();
         this.initBuffers();
+        this.initPickingBuffer();
         this.initCamera();
         this.initEvents();
     }
@@ -33,11 +37,14 @@ export class RevixRenderer {
     `;
 
         const fsSource = `
-      precision mediump float;
-      uniform vec4 u_color;
-      void main() {
-        gl_FragColor = u_color;
-      }
+            precision mediump float;
+            uniform vec4 u_color;
+            uniform vec4 u_highlightColor;
+            uniform bool u_useHighlight;
+
+            void main() {
+                gl_FragColor = u_useHighlight ? u_highlightColor : u_color;
+            }
     `;
 
         const vs = gl.createShader(gl.VERTEX_SHADER);
@@ -58,11 +65,29 @@ export class RevixRenderer {
         this.a_position = gl.getAttribLocation(program, 'a_position');
         this.u_matrix = gl.getUniformLocation(program, 'u_matrix');
         this.u_color = gl.getUniformLocation(program, 'u_color');
+        this.u_highlightColor = gl.getUniformLocation(program, 'u_highlightColor');
+        this.u_useHighlight = gl.getUniformLocation(program, 'u_useHighlight');
     }
 
     initBuffers() {
         this.vertexBuffer = this.gl.createBuffer();
     }
+
+    initPickingBuffer() {
+        const gl = this.gl;
+        const fb = gl.createFramebuffer();
+        const tex = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, tex);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, this.canvas.clientWidth, this.canvas.clientHeight, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    
+        gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
+    
+        this.pickingFramebuffer = fb;
+        this.pickingTexture = tex;
+      }
 
     initCamera() {
         this.camera = {
@@ -134,9 +159,35 @@ export class RevixRenderer {
             this.camera.distance += e.deltaY * 0.5;
             this.camera.distance = Math.max(50, Math.min(2000, this.camera.distance));
         });
+
+        // 添加点击事件处理
+        this.canvas.addEventListener('click', (e) => {
+            if (this.camera.dragging) return; // 如果正在拖动，不处理点击
+
+            const rect = this.canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            // 渲染拾取场景
+            this.renderPickingScene();
+
+            // 获取点击位置的ID
+            const id = this.getPickedId(x, y);
+
+            // 如果点击到了某个对象
+            if (id > 0) {
+                this.selectedId = id;
+                const node = this.viewMap.get(id);
+                if (node) {
+                    console.log('Selected node:', node);
+                }
+            } else {
+                this.selectedId = null;
+            }
+        });
     }
 
-    drawView(bounds, colorVec4, z) {
+    drawView(bounds, colorVec4, z, isSelected = false) {
         const gl = this.gl;
         const [l, t, r, b] = bounds;
         const vertices = new Float32Array([
@@ -150,7 +201,7 @@ export class RevixRenderer {
         gl.enableVertexAttribArray(this.a_position);
         gl.vertexAttribPointer(this.a_position, 3, gl.FLOAT, false, 0, 0);
 
-        const aspect = this.canvas.clientWidth / this.canvas.clientHeight;
+        const aspect = this.canvas.width / this.canvas.height;
         const projection = mat4.create();
         const view = mat4.create();
         const model = mat4.create();
@@ -175,17 +226,48 @@ export class RevixRenderer {
 
         gl.uniformMatrix4fv(this.u_matrix, false, matrix);
         gl.uniform4fv(this.u_color, colorVec4);
+        gl.uniform4fv(this.u_highlightColor, [1.0, 1.0, 0.0, 1.0]); // 黄色高亮
+        gl.uniform1i(this.u_useHighlight, isSelected);
         gl.drawArrays(gl.TRIANGLES, 0, 6);
+    }
+
+    renderPickingScene() {
+        const gl = this.gl;
+        gl.bindFramebuffer(gl.FRAMEBUFFER, this.pickingFramebuffer);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+        this.renderTreeForPicking(this.viewTree);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    }
+
+    renderTreeForPicking(rootNode, depth = 0) {
+        const z = depth * 10;
+        const id = rootNode._id;
+        const color = this.idToColor(id);
+        this.drawView(rootNode.bounds, color, z);
+
+        if (rootNode.children) {
+            rootNode.children.forEach(child => this.renderTreeForPicking(child, depth + 1));
+        }
     }
 
     renderTree(rootNode, depth = 0) {
         const z = depth * 10;
         const color = this.hexToVec4(rootNode.backgroundColor || '#cccccc');
-        this.drawView(rootNode.bounds, color, z);
+        const isSelected = rootNode._id === this.selectedId;
+        this.drawView(rootNode.bounds, color, z, isSelected);
 
         if (rootNode.children) {
             rootNode.children.forEach(child => this.renderTree(child, depth + 1));
         }
+    }
+
+    getPickedId(x, y) {
+        const gl = this.gl;
+        gl.bindFramebuffer(gl.FRAMEBUFFER, this.pickingFramebuffer);
+        const pixel = new Uint8Array(4);
+        gl.readPixels(x, this.canvas.height - y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        return this.colorToId(pixel[0], pixel[1], pixel[2]);
     }
 
     hexToVec4(hex) {
@@ -212,5 +294,17 @@ export class RevixRenderer {
             gl.viewport(0, 0, canvas.width, canvas.height);
         }
     }
+
+    idToColor(id) {
+        const r = (id >> 16) & 0xff;
+        const g = (id >> 8) & 0xff;
+        const b = id & 0xff;
+        
+        return [r / 255, g / 255, b / 255, 1.0];
+      }
+    
+      colorToId(r, g, b) {
+        return (r << 16) | (g << 8) | b;
+      }
 
 }
