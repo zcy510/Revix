@@ -17,32 +17,49 @@ Revix 是一个轻量级的 JavaScript 库，用于在浏览器中可视化原�
 npm install revix
 ```
 
+
 ## 使用方法
 
 ```javascript
-import { renderViewTree } from 'revix';
+import { RevixRenderer } from './core/RevixCore.js';
 
-// 视图树 JSON 数据
-const viewTree = {
-  type: 'View',
-  bounds: [50, 50, 400, 300],
-  children: [
-    {
-      type: 'TextView',
-      bounds: [80, 80, 350, 130],
-      text: 'Hello World'
-    },
-    {
-      type: 'Button',
-      bounds: [80, 180, 200, 240],
-      text: 'Click Me'
+    const viewTree = {
+      bounds: [-100, 100, 100, -100],
+      backgroundColor: '#ff9999',
+      _id: 1,
+      children: [
+        {
+          bounds: [-80, 80, 0, 0],
+          backgroundColor: '#99ccff',
+          _id: 2,
+        },
+        {
+          bounds: [10, 90, 90, 10],
+          backgroundColor: '#99ff99',
+          _id: 3,
+          children: [
+            {
+              bounds: [30, 70, 70, 30],
+              backgroundColor: '#ffff99',
+              _id: 4
+            }
+          ]
+        }
+      ]
+    };
+
+    const canvas = document.getElementById('revix-canvas');
+    const renderer = new RevixRenderer(canvas, viewTree);
+
+    // ✅ 启动渲染循环
+    function renderLoop() {
+    renderer.clear();
+    renderer.resize();
+    renderer.renderPickingScene(); // 先渲染拾取场景
+    renderer.renderTree(viewTree);  // 再渲染主场景
+    requestAnimationFrame(renderLoop);
     }
-  ]
-};
-
-// 渲染视图树
-const container = document.getElementById('app');
-renderViewTree(viewTree, container);
+    renderLoop();
 ```
 
 ## 视图树数据格式

@@ -187,6 +187,10 @@ export class RevixRenderer {
         });
     }
 
+    setViewTree(viewTree) {
+        this.viewTree = viewTree
+    }
+
     drawView(bounds, colorVec4, z, isSelected = false) {
         const gl = this.gl;
         const [l, t, r, b] = bounds;
