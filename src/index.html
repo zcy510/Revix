@@ -8,38 +8,7 @@
     canvas { width: 100vw; height: 100vh; display: block; }
   </style>
 
-<script type="module">
-  import { RevixComponent } from './Core/RevixComponent.ts';
-  customElements.define('revix-component', RevixComponent);
 
-  window.onload = () => {
-    const comp = document.getElementById('myRevix');
-    comp.data = {
-      bounds: [-100, 100, 100, -100],
-      backgroundColor: '#ff9999',
-      _id: 1,
-      children: [
-        {
-          bounds: [-80, 80, 0, 0],
-          backgroundColor: '#99ccff',
-          _id: 2,
-        },
-        {
-          bounds: [10, 90, 90, 10],
-          backgroundColor: '#99ff99',
-          _id: 3,
-          children: [
-            {
-              bounds: [30, 70, 70, 30],
-              backgroundColor: '#ffff99',
-              _id: 4
-            }
-          ]
-        }
-      ]
-    };
-  };
-</script>
 </head>
 <body>
   <revix-component id="myRevix" style="width: 500px; height: 400px;"></revix-component>
