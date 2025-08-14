@@ -1,8 +1,10 @@
 // RevixCore.js - WebGL 3D View Tree Renderer (with Camera Controls)
 import { mat4 } from 'https://cdn.jsdelivr.net/npm/gl-matrix@3.4.3/esm/index.js';
+import { RevixEventEmitter } from './RevixEvents.js';
 
-export class RevixRenderer {
+export class RevixRenderer extends RevixEventEmitter {
     constructor(canvas, viewTree) {
+        super();
         this.canvas = canvas;
         this.gl = canvas.getContext('webgl');
         this.viewTree = viewTree;
@@ -173,16 +175,22 @@ export class RevixRenderer {
 
             // 获取点击位置的ID
             const id = this.getPickedId(x, y);
-
+            console.log('Picked ID:', id);
             // 如果点击到了某个对象
             if (id > 0) {
-                this.selectedId = id;
                 const node = this.viewMap.get(id);
                 if (node) {
-                    console.log('Selected node:', node);
+                    if (this.selectedId !== id) {
+                        this.selectedId = id;
+                        this.emit('nodeSelected', node);
+                        console.log('Selected node:', node);
+                    }
                 }
             } else {
-                this.selectedId = null;
+                if (this.selectedId !== null) {
+                    this.emit('nodeDeselected');
+                    this.selectedId = null;
+                }
             }
         });
     }
